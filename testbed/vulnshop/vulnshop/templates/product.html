@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }}{% endblock %}
+{% block heading %}{{ product.name }}{% endblock %}
+{% block content %}
+<p>{{ product.description }}</p>
+<p>${{ '%.2f' % product.price }}</p>
+<h2>Comments</h2>
+{% for c in comments %}
+<div class="comment"><strong>{{ c.author }}</strong>: {{ c.body }}</div>
+{% else %}
+<p>No comments yet.</p>
+{% endfor %}
+<form id="comment-form" data-api="{{ api }}" data-product="{{ product.id }}">
+  <textarea name="body" rows="3" cols="40" placeholder="Write a comment"></textarea><br>
+  <button>Post comment</button>
+</form>
+<p id="comment-status" role="status"></p>
+{% endblock %}

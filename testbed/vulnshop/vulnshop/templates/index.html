@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block heading %}Coffee &amp; Tea Shop{% endblock %}
+{% block content %}
+<form action="/search" method="get">
+  <input name="q" placeholder="Search products">
+  <button>Search</button>
+</form>
+<h2>Products</h2>
+<ul>
+  {% for p in products %}
+  <li><a href="/product/{{ p.id }}">{{ p.name }}</a> — ${{ '%.2f' % p.price }}</li>
+  {% endfor %}
+</ul>
+<h2>Sign in</h2>
+<form id="login-form">
+  <input name="username" placeholder="Username" autocomplete="username"><br>
+  <input name="password" type="password" placeholder="Password" autocomplete="current-password"><br>
+  <button>Sign in</button>
+</form>
+<p id="login-status" role="status"></p>
+{% endblock %}

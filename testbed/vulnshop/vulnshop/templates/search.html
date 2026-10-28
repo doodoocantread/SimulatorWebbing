@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block heading %}Search{% endblock %}
+{% block content %}
+<form action="{{ prefix }}/search" method="get">
+  <input name="q" value="">
+  <button>Search</button>
+</form>
+<p>Results for: {{ q }}</p>
+<ul>
+  {% for r in rows %}
+  <li><a href="{{ prefix }}/product/{{ r.id }}">{{ r.name }}</a> — ${{ '%.2f' % r.price }}</li>
+  {% else %}
+  <li>No products found.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

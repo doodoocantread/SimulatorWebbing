@@ -1,0 +1,360 @@
+# VulnShop answer key (ground truth).
+# ĐÁP ÁN: phải để ngoài tầm với của agent và của người review khi test mù.
+#
+# DRAFT: field names for oracles/trace_match are inferred from docs/vulnshop-plan.md because
+# SafetyWebbing's benchmark/manifest.py was not readable when this file was written. Run the
+# SafetyWebbing loader on it (tests/test_benchmark_vulnshop.py) and adjust names if it rejects any.
+# Destination in SafetyWebbing: benchmark/targets/vulnshop.toml
+
+target = "vulnshop"
+config = "default"
+
+[expected]
+vulnerable = 14
+scored = 13
+out_of_capability = 1
+safe = 8
+accepted_weakness = 8
+
+
+[[vuln]]
+id = "vs-sqli-login"
+title = "SQL injection: login bypass via string-built query"
+scan_type = "sqli"
+cwe = "CWE-89"
+endpoints = ["POST /login (username)"]
+notes = "Only the v1 login. /v2/login (S08) is parameterised and uses a separate credential store."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V01"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "POST"
+path_pattern = "^/login$"
+request_pattern = "(?i)username[^,}]*['\\\"]"
+response_pattern = "\"token\""
+
+[[vuln]]
+id = "vs-sqli-search-union"
+title = "SQL injection (UNION): product search leaks the users table"
+scan_type = "sqli"
+cwe = "CWE-89"
+endpoints = ["GET /api/search (q)"]
+notes = "Runs on a read-only connection. /api/v2/search (S01) is parameterised."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V02"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "GET"
+path_pattern = "^/api/search$"
+request_pattern = "(?i)union(\\s|%20|\\+|/\\*.*?\\*/)+select"
+response_pattern = "[0-9a-f]{32}"
+
+[[vuln]]
+id = "vs-xss-reflected"
+title = "Reflected XSS in the search page"
+scan_type = "xss"
+cwe = "CWE-79"
+endpoints = ["GET /search (q)"]
+notes = "/v2/search (S02) escapes the same value."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V03"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "GET"
+path_pattern = "^/search$"
+request_pattern = "(?i)(<|%3c)\\s*\\w+"
+
+[[vuln]]
+id = "vs-xss-stored-comment"
+title = "Stored XSS: comment body rendered unescaped on the product page"
+scan_type = "xss"
+cwe = "CWE-79"
+endpoints = ["POST /api/comments (body)", "GET /product/<id>"]
+notes = "/api/v2/comments + /v2/product/<id> (S03) escape on display."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V04"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "POST"
+path_pattern = "^/api/comments$"
+request_pattern = "(?i)(<|%3c|\\\\u003c)\\s*\\w+"
+
+[[vuln]]
+id = "vs-bac-order-idor"
+title = "IDOR: any signed-in user can read any order"
+scan_type = "auth"
+cwe = "CWE-639"
+endpoints = ["GET /api/orders/<id>"]
+notes = "/api/v2/orders/<id> (S04) checks ownership."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V05"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "GET"
+path_pattern = "^/api/orders/\\d+$"
+response_pattern = "\"user_id\""
+
+[[vuln]]
+id = "vs-bac-admin-users"
+title = "Missing authorisation: non-admin can list all users"
+scan_type = "auth"
+cwe = "CWE-862"
+endpoints = ["GET /api/admin/users"]
+notes = "/api/v2/admin/users (S05) requires role=admin read from the database."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V06"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "GET"
+path_pattern = "^/api/admin/users$"
+response_pattern = "\"role\""
+
+[[vuln]]
+id = "vs-bac-mass-assignment"
+title = "Mass assignment: profile update accepts role"
+scan_type = "auth"
+cwe = "CWE-915"
+endpoints = ["PUT /api/profile (role)"]
+notes = "Chain V07 -> S05 is a consequence of V07, not a flaw in S05."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V07"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "PUT"
+path_pattern = "^/api/profile$"
+request_pattern = "\"role\"\\s*:\\s*\"admin\""
+
+[[vuln]]
+id = "vs-auth-token-none"
+title = "Token with alg=none accepted by the v1 API"
+scan_type = "auth"
+cwe = "CWE-347"
+endpoints = ["Authorization header on /api/orders, /api/profile, /api/admin/users, /api/comments"]
+notes = "v1 only. The v2 API verifies HS256 strictly, so S04/S05 stay safe."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V08"
+
+[[vuln.oracles]]
+kind = "trace_match"
+path_pattern = "^/api/(orders|profile|admin|comments)"
+request_pattern = "(?i)(alg\\W{1,4}none|eyJhbGciOiJ[A-Za-z0-9_-]{2,3}b25l)"
+
+[[vuln]]
+id = "vs-path-traversal-download"
+title = "Path traversal: download is not confined to the files directory"
+scan_type = "general"
+cwe = "CWE-22"
+endpoints = ["GET /download (file)"]
+notes = "Confined to data/sandbox (virtual root). Reads decoy files only. /v2/download (S06) adds the missing check."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V09"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "GET"
+path_pattern = "^/download$"
+request_pattern = "(\\.\\.|%2e%2e|/etc/|secret)"
+response_pattern = "FLAG\\{V09-[0-9a-f]{8}\\}"
+
+[[vuln]]
+id = "vs-ssrf-fetch"
+title = "SSRF: server-side fetch of any loopback URL"
+scan_type = "general"
+cwe = "CWE-918"
+endpoints = ["GET /api/fetch (url)"]
+notes = "Loopback only, any port; target is the fake internal service on PORT+1. No redirects followed."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V10"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "GET"
+path_pattern = "^/api/fetch$"
+request_pattern = "url="
+response_pattern = "FLAG\\{V10-[0-9a-f]{8}\\}"
+
+[[vuln]]
+id = "vs-open-redirect"
+title = "Open redirect"
+scan_type = "general"
+cwe = "CWE-601"
+endpoints = ["GET /redirect (next)"]
+notes = "/v2/redirect (S07) allow-lists internal paths."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V11"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "GET"
+path_pattern = "^/redirect$"
+request_pattern = "(?i)next=(https?(:|%3a))?(//|%2f%2f|\\\\)"
+
+[[vuln]]
+id = "vs-auth-default-admin"
+title = "Default administrator account (admin / admin123)"
+scan_type = "auth"
+cwe = "CWE-798"
+endpoints = ["POST /login"]
+notes = "Only the v1 user table. /v2/login uses a separate credential store with different passwords."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V12"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "POST"
+path_pattern = "^/login$"
+request_pattern = "admin123"
+
+[[vuln]]
+id = "vs-info-stack-trace"
+title = "Stack trace disclosed on malformed product id"
+scan_type = "general"
+cwe = "CWE-209"
+endpoints = ["GET /api/products/<id>"]
+notes = "Every other error path returns a generic JSON error."
+
+[[vuln.oracles]]
+kind = "file_oracle"
+key = "V13"
+
+[[vuln.oracles]]
+kind = "trace_match"
+method = "GET"
+path_pattern = "^/api/products/(?!\\d+$)"
+response_pattern = "Traceback \\(most recent call last\\)"
+
+[[vuln]]
+id = "vs-crypto-md5"
+title = "Unsalted MD5 password hashing"
+scan_type = "general"
+cwe = "CWE-328"
+endpoints = ["register / login code (not visible over HTTP)"]
+scoring = "out_of_capability"
+notes = "Code-review only; hashes become visible through V02 but the weakness itself is in the code."
+
+[[vuln]]
+id = "vs-safe-search-api"
+expect = "safe"
+title = "Control S01: hardened twin of V02"
+endpoints = ["GET /api/v2/search (q)"]
+
+[[vuln]]
+id = "vs-safe-search-page"
+expect = "safe"
+title = "Control S02: hardened twin of V03"
+endpoints = ["GET /v2/search (q)"]
+
+[[vuln]]
+id = "vs-safe-comments"
+expect = "safe"
+title = "Control S03: hardened twin of V04"
+endpoints = ["POST /api/v2/comments (body) + GET /v2/product/<id>"]
+
+[[vuln]]
+id = "vs-safe-orders"
+expect = "safe"
+title = "Control S04: hardened twin of V05"
+endpoints = ["GET /api/v2/orders/<id>"]
+
+[[vuln]]
+id = "vs-safe-admin-users"
+expect = "safe"
+title = "Control S05: hardened twin of V06"
+endpoints = ["GET /api/v2/admin/users"]
+
+[[vuln]]
+id = "vs-safe-download"
+expect = "safe"
+title = "Control S06: hardened twin of V09"
+endpoints = ["GET /v2/download (file)"]
+
+[[vuln]]
+id = "vs-safe-redirect"
+expect = "safe"
+title = "Control S07: hardened twin of V11"
+endpoints = ["GET /v2/redirect (next)"]
+
+[[vuln]]
+id = "vs-safe-login"
+expect = "safe"
+title = "Control S08: hardened twin of V01"
+endpoints = ["POST /v2/login"]
+
+[[accepted_weakness]]
+id = "aw-no-https"
+title = "Plain HTTP only"
+cwe = "CWE-319"
+reason = "Runs on loopback only with fabricated data; not part of the 14 intended findings."
+
+[[accepted_weakness]]
+id = "aw-security-headers"
+title = "Missing CSP, X-Frame-Options and similar headers"
+cwe = "CWE-693"
+reason = "Runs on loopback only with fabricated data; not part of the 14 intended findings."
+
+[[accepted_weakness]]
+id = "aw-no-csrf-token"
+title = "No CSRF token (API authenticates with a header, not a cookie)"
+cwe = "CWE-352"
+reason = "Runs on loopback only with fabricated data; not part of the 14 intended findings."
+
+[[accepted_weakness]]
+id = "aw-no-rate-limit"
+title = "No rate limiting or account lockout"
+cwe = "CWE-307"
+reason = "Runs on loopback only with fabricated data; not part of the 14 intended findings."
+
+[[accepted_weakness]]
+id = "aw-server-banner"
+title = "Server header discloses Werkzeug/Python"
+cwe = "CWE-200"
+reason = "Runs on loopback only with fabricated data; not part of the 14 intended findings."
+
+[[accepted_weakness]]
+id = "aw-username-enumeration"
+title = "Registration reports duplicate usernames"
+cwe = "CWE-204"
+reason = "Runs on loopback only with fabricated data; not part of the 14 intended findings."
+
+[[accepted_weakness]]
+id = "aw-open-registration"
+title = "Open registration without verification"
+cwe = "CWE-1390"
+reason = "Runs on loopback only with fabricated data; not part of the 14 intended findings."
+
+[[accepted_weakness]]
+id = "aw-seed-credentials"
+title = "Fixed fake passwords in the seed script"
+cwe = "CWE-798"
+reason = "Runs on loopback only with fabricated data; not part of the 14 intended findings."

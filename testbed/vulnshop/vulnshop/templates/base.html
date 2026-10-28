@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}VulnShop{% endblock %}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 52rem; margin: 0 auto; padding: 0 1rem 2rem; }
+    .banner { background: #b00020; color: #fff; padding: .6rem 1rem; margin: 0 -1rem 1rem; font-weight: 600; }
+    nav a { margin-right: 1rem; }
+    .comment { border-left: 3px solid #ccc; padding-left: .6rem; margin: .5rem 0; }
+    input, textarea, button { font: inherit; margin: .15rem 0; }
+  </style>
+</head>
+<body>
+  <div class="banner">VulnShop is an intentionally vulnerable test application. Loopback only, fake data. Do not deploy it.
+    <br>Ứng dụng này cố ý có lỗ hổng, chỉ dùng để kiểm thử cục bộ, không triển khai.</div>
+  <nav><a href="/">Home</a><a href="/search">Search</a><a href="/v2/search">Search (v2)</a></nav>
+  <h1>{% block heading %}VulnShop{% endblock %}</h1>
+  {% block content %}{% endblock %}
+  <script src="/static/app.js"></script>
+</body>
+</html>
